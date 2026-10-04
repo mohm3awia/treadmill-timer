@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111">
+<title>Treadmill Interval Timer</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  min-height:100vh;
+  background:#111;
+  color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+
+.app{
+  width:min(700px,100%);
+  margin:auto;
+  padding:24px 18px 32px;
+}
+
+h1{
+  font-size:28px;
+  margin:0 0 6px;
+}
+
+.sub{
+  color:#aaa;
+  margin:0 0 22px;
+}
+
+.card{
+  background:#1c1c1e;
+  border-radius:22px;
+  padding:22px;
+  margin-bottom:14px;
+}
+
+.settings{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:15px;
+}
+
+.round-title{
+  color:#aaa;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  font-size:13px;
+}
+
+.round-number{
+  font-size:32px;
+  font-weight:800;
+  margin-top:3px;
+}
+
+input{
+  width:100px;
+  background:#333;
+  color:white;
+  border:1px solid #555;
+  border-radius:12px;
+  padding:12px;
+  font-size:20px;
+  text-align:center;
+}
+
+.phase{
+  text-align:center;
+}
+
+.label{
+  font-size:18px;
+  color:#aaa;
+  text-transform:uppercase;
+  letter-spacing:1.5px;
+}
+
+.speed{
+  font-size:42px;
+  font-weight:800;
+  margin:5px 0;
+}
+
+.time{
+  font-size:86px;
+  font-weight:800;
+  line-height:1;
+  margin:10px 0 12px;
+  font-variant-numeric:tabular-nums;
+}
+
+.round{
+  font-size:20px;
+  color:#aaa;
+  font-weight:600;
+}
+
+.bar{
+  height:8px;
+  background:#333;
+  border-radius:99px;
+  overflow:hidden;
+  margin-top:20px;
+}
+
+.fill{
+  height:100%;
+  width:0;
+  background:#fff;
+}
+
+.buttons{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+button{
+  border:0;
+  border-radius:16px;
+  padding:17px;
+  font-size:18px;
+  font-weight:700;
+  background:#333;
+  color:#fff;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+
+button.primary{
+  background:#fff;
+  color:#111;
+}
+
+button:disabled{
+  opacity:.4;
+}
+
+.status{
+  text-align:center;
+  color:#aaa;
+  margin-top:12px;
+  min-height:24px;
+}
+
+.plan{
+  line-height:1.7;
+  color:#ddd;
+}
+
+.plan strong{
+  color:#fff;
+}
+</style>
+</head>
+
+<body>
+
+<main class="app">
+
+<h1>Treadmill Interval Timer</h1>
+<p class="sub">Your exact treadmill workout</p>
+
+<section class="card settings">
+
+<div>
+<div class="round-title">Rounds Set</div>
+<div class="round-number" id="roundsDisplay">5</div>
+</div>
+
+<input
+id="roundInput"
+type="number"
+min="1"
+max="50"
+step="1"
+value="5"
+inputmode="numeric"
+>
+
+</section>
+
+<section class="card phase">
+
+<div class="label" id="phase">READY</div>
+
+<div class="speed" id="speed">—</div>
+
+<div class="time" id="time">05:00</div>
+
+<div class="round" id="round">
+Warm-up
+</div>
+
+<div class="bar">
+<div class="fill" id="fill"></div>
+</div>
+
+</section>
+
+<section class="card">
+
+<div class="buttons">
+
+<button class="primary" id="start">
+Start
+</button>
+
+<button id="pause" disabled>
+Pause
+</button>
+
+<button id="reset">
+Reset
+</button>
+
+<button id="skip">
+Skip Phase
+</button>
+
+</div>
+
+<div class="status" id="status">
+Ready — warm-up starts at 3.0 mph.
+</div>
+
+</section>
+
+<section class="card plan">
+
+<strong>Workout</strong>
+<br><br>
+
+Warm-up:
+<strong>3.0 mph × 5:00</strong>
+
+<br><br>
+
+Each round:
+
+<br>
+
+3.0 mph walk × <strong>0:30</strong>
+
+<br>
+
+5.0 mph jog × <strong>0:30</strong>
+
+<br>
+
+3.0 mph walk × <strong>0:40</strong>
+
+<br>
+
+8.0 mph fast run × <strong>0:40</strong>
+
+<br>
+
+3.0 mph walk × <strong>1:00</strong>
+
+<br>
+
+8.0 mph fast run × <strong>1:00</strong>
+
+</section>
+
+</main>
+
+<script>
+
+const template = [
+
+["Walk","3.0 mph",30],
+
+["Jog","5.0 mph",30],
+
+["Walk","3.0 mph",40],
+
+["Fast Run","8.0 mph",40],
+
+["Walk","3.0 mph",60],
+
+["Fast Run","8.0 mph",60]
+
+];
+
+let phases=[];
+
+let index=0;
+
+let remaining=300;
+
+let running=false;
+
+let timer=null;
+
+const phaseEl=document.getElementById("phase");
+
+const speedEl=document.getElementById("speed");
+
+const timeEl=document.getElementById("time");
+
+const roundEl=document.getElementById("round");
+
+const fillEl=document.getElementById("fill");
+
+const statusEl=document.getElementById("status");
+
+const startBtn=document.getElementById("start");
+
+const pauseBtn=document.getElementById("pause");
+
+const resetBtn=document.getElementById("reset");
+
+const skipBtn=document.getElementById("skip");
+
+const roundInput=document.getElementById("roundInput");
+
+const roundsDisplay=document.getElementById("roundsDisplay");
+
+
+function getRounds(){
+
+let n=parseInt(roundInput.value);
+
+if(!Number.isFinite(n)) n=5;
+
+n=Math.max(1,Math.min(50,n));
+
+roundInput.value=n;
+
+roundsDisplay.textContent=n;
+
+return n;
+
+}
+
+
+function buildWorkout(){
+
+const rounds=getRounds();
+
+phases=[
+
+{
+name:"Warm-up Walk",
+speed:"3.0 mph",
+seconds:300,
+round:0
+}
+
+];
+
+for(let r=1;r<=rounds;r++){
+
+for(const item of template){
+
+phases.push({
+
+name:item[0],
+
+speed:item[1],
+
+seconds:item[2],
+
+round:r
+
+});
+
+}
+
+}
+
+}
+
+
+function formatTime(seconds){
+
+seconds=Math.max(0,Math.ceil(seconds));
+
+const minutes=Math.floor(seconds/60);
+
+const secs=seconds%60;
+
+return String(minutes).padStart(2,"0")
++":"+String(secs).padStart(2,"0");
+
+}
+
+
+function render(){
+
+const p=phases[index];
+
+if(!p)return;
+
+phaseEl.textContent=p.name;
+
+speedEl.textContent=p.speed;
+
+timeEl.textContent=formatTime(remaining);
+
+roundEl.textContent=
+
+p.round===0
+
+? "Warm-up"
+
+: `ROUND ${p.round} / ${getRounds()}`;
+
+fillEl.style.width=
+
+(100*(1-remaining/p.seconds))+"%";
+
+}
+
+
+function beep(){
+
+try{
+
+const AudioContext=
+
+window.AudioContext ||
+window.webkitAudioContext;
+
+const ctx=new AudioContext();
+
+const osc=ctx.createOscillator();
+
+const gain=ctx.createGain();
+
+osc.frequency.value=880;
+
+gain.gain.value=.08;
+
+osc.connect(gain);
+
+gain.connect(ctx.destination);
+
+osc.start();
+
+setTimeout(()=>{
+
+osc.stop();
+
+ctx.close();
+
+},180);
+
+}catch(e){}
+
+}
+
+
+function speak(text){
+
+if(!("speechSynthesis" in window))return;
+
+speechSynthesis.cancel();
+
+const utterance=
+
+new SpeechSynthesisUtterance(text);
+
+utterance.rate=1;
+
+speechSynthesis.speak(utterance);
+
+}
+
+
+function announce(p){
+
+beep();
+
+if(p.round===0){
+
+speak("Warm up. Walk. Three miles per hour.");
+
+}else{
+
+speak(
+
+`${p.name}. ${p.speed}. Round ${p.round} of ${getRounds()}.`
+
+);
+
+}
+
+}
+
+
+function nextPhase(){
+
+index++;
+
+if(index>=phases.length){
+
+finish();
+
+return;
+
+}
+
+remaining=phases[index].seconds;
+
+announce(phases[index]);
+
+render();
+
+}
+
+
+function tick(){
+
+if(!running)return;
+
+remaining-=0.1;
+
+render();
+
+if(remaining<=0){
+
+nextPhase();
+
+}
+
+}
+
+
+function start(){
+
+if(running)return;
+
+running=true;
+
+startBtn.disabled=true;
+
+pauseBtn.disabled=false;
+
+statusEl.textContent=
+
+"Running — follow the displayed speed.";
+
+if(index===0 && remaining===300){
+
+announce(phases[0]);
+
+}
+
+timer=setInterval(tick,100);
+
+}
+
+
+function pause(){
+
+if(!running)return;
+
+running=false;
+
+clearInterval(timer);
+
+timer=null;
+
+startBtn.disabled=false;
+
+pauseBtn.disabled=true;
+
+statusEl.textContent="Paused.";
+
+}
+
+
+function reset(){
+
+running=false;
+
+clearInterval(timer);
+
+timer=null;
+
+buildWorkout();
+
+index=0;
+
+remaining=300;
+
+startBtn.disabled=false;
+
+pauseBtn.disabled=true;
+
+statusEl.textContent=
+
+"Ready — warm-up starts at 3.0 mph.";
+
+render();
+
+}
+
+
+function finish(){
+
+running=false;
+
+clearInterval(timer);
+
+timer=null;
+
+phaseEl.textContent="WORKOUT COMPLETE";
+
+speedEl.textContent="✓";
+
+timeEl.textContent="00:00";
+
+roundEl.textContent=
+
+`${getRounds()} ROUNDS COMPLETED`;
+
+fillEl.style.width="100%";
+
+startBtn.disabled=true;
+
+pauseBtn.disabled=true;
+
+statusEl.textContent=
+
+"Workout complete.";
+
+beep();
+
+speak("Workout complete.");
+
+}
+
+
+startBtn.addEventListener("click",start);
+
+pauseBtn.addEventListener("click",pause);
+
+resetBtn.addEventListener("click",reset);
+
+skipBtn.addEventListener("click",()=>{
+
+if(running){
+
+nextPhase();
+
+}
+
+});
+
+
+roundInput.addEventListener("input",()=>{
+
+if(!running){
+
+getRounds();
+
+statusEl.textContent=
+
+`${getRounds()} rounds selected.`;
+
+}
+
+});
+
+
+roundInput.addEventListener("change",()=>{
+
+if(!running){
+
+reset();
+
+}
+
+});
+
+
+buildWorkout();
+
+render();
+
+</script>
+
+</body>
+</html>
